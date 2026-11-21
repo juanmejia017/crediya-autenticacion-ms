@@ -7,7 +7,6 @@ import co.com.crediya.model.auth.UsuarioAutenticado;
 import co.com.crediya.model.user.User;
 import co.com.crediya.usecase.user.UserUseCase;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +22,6 @@ import java.net.URI;
 /**
  * Entrada HTTP del registro de usuarios: recibe la petición, la delega y arma la respuesta.
  */
-@Slf4j
 @RestController
 @RequestMapping(value = "/api/v1/usuarios", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
@@ -37,11 +35,7 @@ public class ApiRest {
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestBody(required = false) RegistrarUsuarioRequest request) {
         UsuarioAutenticado solicitante = validadorPeticion.validarPeticionAutenticada(authorization, request);
-        log.info("Registro de usuario solicitado por el usuario {} con rol {}", solicitante.idUsuario(), solicitante.rol());
-
         User creado = userUseCase.registrarUsuario(request.aDominio(), solicitante);
-
-        log.info("Usuario registrado con id {}", creado.getIdUsuario());
         URI ubicacion = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(creado.getIdUsuario()).toUri();
         return ResponseEntity.created(ubicacion).body(UsuarioResponse.desdeDominio(creado));

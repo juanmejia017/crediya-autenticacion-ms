@@ -126,10 +126,13 @@ administrador. Es el que inicia sesión primero para registrar asesores y client
 
 ### Organización del código
 
-- **ApiRest / LoginApiRest:** solo reciben la petición HTTP, la delegan y arman la respuesta.
-- **ValidadorPeticion** (`api/validacion`): valida el token y que el cuerpo no venga vacío, antes del caso de uso.
+- **ApiRest / LoginApiRest:** solo reciben la petición HTTP, la delegan y arman la respuesta (sin logs ni validaciones).
+- **ValidadorPeticion** (`api/validacion`): lee el header `Authorization: Bearer`, hace validar el token, registra quién
+  hizo la petición y revisa que el cuerpo no venga vacío.
+- **Validadores del dominio:** `UserValidator` (datos del usuario) y `CredencialesValidator` (correo y clave del login).
 - **Casos de uso:** `registrarUsuario`, `crearAdministradorInicial`, `iniciarSesion`, `validarToken`.
-- **Adapters:** solo persisten; la conversión dominio ↔ entidad está en `jpa/mapper` (`UserEntityMapper`, `RolEntityMapper`).
+- **Adapters:** solo persisten; la conversión dominio ↔ entidad está en `jpa/mapper` (`UserEntityMapper`, `RolEntityMapper`)
+  y la traducción de errores de la base de datos en `jpa/error/TraductorErroresIntegridad`.
 - **Nombres de métodos en español.** Se mantienen en inglés solo los que exige el framework: los métodos derivados de
   Spring Data (`existsBy…`, `findBy…`, `save`), los `@Override` de Spring (`run`, `doFilter`) y los beans
   `entityManagerFactory` y `transactionManager`.
@@ -158,7 +161,8 @@ LoginApiRest → ValidadorPeticion.validarCuerpo → AutenticacionUseCase.inicia
 Requiere el header `Authorization: Bearer <token>` de un usuario **ADMIN o ASESOR**.
 
 ```
-ApiRest.registrarUsuario → ValidadorPeticion.validarPeticionAutenticada (token con AutenticacionUseCase.validarToken + cuerpo)
+ApiRest.registrarUsuario → ValidadorPeticion.validarPeticionAutenticada (saca el token del header Bearer,
+          AutenticacionUseCase.validarToken, cuerpo no vacío)
         → UserUseCase.registrarUsuario (permiso → validar → correo/documento libres → encriptar clave → guardar)
         → UserRepositoryAdapter (INSERT, UserEntityMapper) → ApiRest (201)
 ```

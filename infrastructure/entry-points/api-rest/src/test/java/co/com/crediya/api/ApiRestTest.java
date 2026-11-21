@@ -5,7 +5,6 @@ import co.com.crediya.model.exceptions.AccesoDenegadoException;
 import co.com.crediya.model.exceptions.CorreoYaRegistradoException;
 import co.com.crediya.model.exceptions.DatosInvalidosException;
 import co.com.crediya.model.exceptions.DocumentoYaRegistradoException;
-import co.com.crediya.model.exceptions.NoAutenticadoException;
 import co.com.crediya.model.rol.Rol;
 import co.com.crediya.model.user.User;
 import co.com.crediya.usecase.autenticacion.AutenticacionUseCase;
@@ -63,7 +62,7 @@ class ApiRestTest {
     @BeforeEach
     void setup() {
         client = RestTestClient.bindToApplicationContext(context).build();
-        when(autenticacionUseCase.validarToken(TOKEN)).thenReturn(ADMIN);
+        when(autenticacionUseCase.validarToken("token-admin")).thenReturn(ADMIN);
     }
 
     @Test
@@ -166,8 +165,6 @@ class ApiRestTest {
 
     @Test
     void responde401SiNoHayToken() {
-        when(autenticacionUseCase.validarToken(null)).thenThrow(new NoAutenticadoException("Debes iniciar sesión"));
-
         client.post().uri("/api/v1/usuarios")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BODY)
