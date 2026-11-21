@@ -22,6 +22,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -66,12 +67,12 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldRegisterUserAndReturn201() {
+    void registraElUsuarioYResponde201() {
         User creado = User.builder()
                 .idUsuario(1L).nombres("Juan").apellidos("Mejía")
                 .correoElectronico("juan@correo.com").salarioBase(new BigDecimal("2500000"))
                 .build();
-        when(userUseCase.registrar(any(), eq(ADMIN))).thenReturn(creado);
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN))).thenReturn(creado);
 
         client.post().uri("/api/v1/usuarios")
                 .header("Authorization", TOKEN)
@@ -79,14 +80,14 @@ class ApiRestTest {
                 .body(BODY)
                 .exchange()
                 .expectStatus().isCreated()
-                .expectHeader().location("/api/v1/usuarios/1")
+                .expectHeader().value("Location", ubicacion -> assertTrue(ubicacion.endsWith("/api/v1/usuarios/1")))
                 .expectBody()
                 .jsonPath("$.idUsuario").isEqualTo(1);
     }
 
     @Test
-    void shouldReturn400WhenDataIsInvalid() {
-        when(userUseCase.registrar(any(), eq(ADMIN)))
+    void responde400SiLosDatosSonInvalidos() {
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN)))
                 .thenThrow(new DatosInvalidosException(List.of("El campo nombres es obligatorio")));
 
         client.post().uri("/api/v1/usuarios")
@@ -100,8 +101,8 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldReturn409WhenEmailExists() {
-        when(userUseCase.registrar(any(), eq(ADMIN)))
+    void responde409SiElCorreoYaExiste() {
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN)))
                 .thenThrow(new CorreoYaRegistradoException());
 
         client.post().uri("/api/v1/usuarios")
@@ -113,8 +114,8 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldReturn409WhenDocumentExists() {
-        when(userUseCase.registrar(any(), eq(ADMIN))).thenThrow(new DocumentoYaRegistradoException());
+    void responde409SiElDocumentoYaExiste() {
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN))).thenThrow(new DocumentoYaRegistradoException());
 
         client.post().uri("/api/v1/usuarios")
                 .header("Authorization", TOKEN)
@@ -127,7 +128,7 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldReturn400WhenJsonIsMalformed() {
+    void responde400SiElJsonEstaMalFormado() {
         client.post().uri("/api/v1/usuarios")
                 .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -139,7 +140,7 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldReturn415WhenContentTypeIsNotJson() {
+    void responde415SiElContentTypeNoEsJson() {
         client.post().uri("/api/v1/usuarios")
                 .contentType(MediaType.TEXT_PLAIN)
                 .body("texto")
@@ -150,8 +151,8 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldReturn500WithGenericMessageOnUnexpectedError() {
-        when(userUseCase.registrar(any(), eq(ADMIN))).thenThrow(new IllegalStateException("detalle interno"));
+    void responde500GenericoAnteUnErrorInesperado() {
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN))).thenThrow(new IllegalStateException("detalle interno"));
 
         client.post().uri("/api/v1/usuarios")
                 .header("Authorization", TOKEN)
@@ -164,7 +165,7 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldReturn401WhenTokenIsMissing() {
+    void responde401SiNoHayToken() {
         when(autenticacionUseCase.validarToken(null)).thenThrow(new NoAutenticadoException("Debes iniciar sesión"));
 
         client.post().uri("/api/v1/usuarios")
@@ -176,12 +177,12 @@ class ApiRestTest {
                 .expectBody()
                 .jsonPath("$.codigo").isEqualTo("NO_AUTENTICADO");
 
-        verify(userUseCase, never()).registrar(any(), any());
+        verify(userUseCase, never()).registrarUsuario(any(), any());
     }
 
     @Test
-    void shouldReturn403WhenUserIsNotAdminOrAdvisor() {
-        when(userUseCase.registrar(any(), eq(ADMIN)))
+    void responde403SiNoEsAdministradorNiAsesor() {
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN)))
                 .thenThrow(new AccesoDenegadoException("Solo un administrador o un asesor puede registrar usuarios"));
 
         client.post().uri("/api/v1/usuarios")
@@ -195,11 +196,11 @@ class ApiRestTest {
     }
 
     @Test
-    void shouldNotReturnPasswordInResponse() {
+    void noDevuelveLaClaveEnLaRespuesta() {
         User creado = User.builder()
                 .idUsuario(1L).nombres("Juan").apellidos("Mejía").correoElectronico("juan@correo.com")
                 .salarioBase(new BigDecimal("2500000")).clave("pbkdf2$hash").build();
-        when(userUseCase.registrar(any(), eq(ADMIN))).thenReturn(creado);
+        when(userUseCase.registrarUsuario(any(), eq(ADMIN))).thenReturn(creado);
 
         client.post().uri("/api/v1/usuarios")
                 .header("Authorization", TOKEN)

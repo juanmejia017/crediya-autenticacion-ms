@@ -52,7 +52,7 @@ class UserUseCaseTest {
 
     @Test
     void administradorRegistraUsuarioValidoYNormalizaDatos() {
-        User creado = useCase.registrar(usuarioValido().build(), ADMIN);
+        User creado = useCase.registrarUsuario(usuarioValido().build(), ADMIN);
 
         assertNotNull(creado.getIdUsuario());
         assertEquals("juan@correo.com", creado.getCorreoElectronico());
@@ -61,24 +61,24 @@ class UserUseCaseTest {
 
     @Test
     void asesorTambienPuedeRegistrar() {
-        assertNotNull(useCase.registrar(usuarioValido().build(), ASESOR).getIdUsuario());
+        assertNotNull(useCase.registrarUsuario(usuarioValido().build(), ASESOR).getIdUsuario());
     }
 
     @Test
     void clienteNoPuedeRegistrarUsuarios() {
-        assertThrows(AccesoDenegadoException.class, () -> useCase.registrar(usuarioValido().build(), CLIENTE));
+        assertThrows(AccesoDenegadoException.class, () -> useCase.registrarUsuario(usuarioValido().build(), CLIENTE));
         assertEquals(0, repository.consultas);
         assertTrue(repository.guardados.isEmpty());
     }
 
     @Test
     void sinSesionNoPuedeRegistrar() {
-        assertThrows(AccesoDenegadoException.class, () -> useCase.registrar(usuarioValido().build(), null));
+        assertThrows(AccesoDenegadoException.class, () -> useCase.registrarUsuario(usuarioValido().build(), null));
     }
 
     @Test
     void guardaLaClaveEncriptadaNuncaEnTextoPlano() {
-        useCase.registrar(usuarioValido().build(), ADMIN);
+        useCase.registrarUsuario(usuarioValido().build(), ADMIN);
 
         assertEquals("hash:Clave123*", repository.guardados.get(0).getClave());
     }
@@ -87,14 +87,14 @@ class UserUseCaseTest {
     void noConsultaNiGuardaSiLosDatosSonInvalidos() {
         User invalido = usuarioValido().correoElectronico("correo-malo").build();
 
-        assertThrows(DatosInvalidosException.class, () -> useCase.registrar(invalido, ADMIN));
+        assertThrows(DatosInvalidosException.class, () -> useCase.registrarUsuario(invalido, ADMIN));
         assertEquals(0, repository.consultas);
         assertTrue(repository.guardados.isEmpty());
     }
 
     @Test
     void guardaElUsuarioNormalizado() {
-        useCase.registrar(usuarioValido().documentoIdentidad(" ").build(), ADMIN);
+        useCase.registrarUsuario(usuarioValido().documentoIdentidad(" ").build(), ADMIN);
 
         User guardado = repository.guardados.get(0);
         assertEquals("juan@correo.com", guardado.getCorreoElectronico());
@@ -103,19 +103,19 @@ class UserUseCaseTest {
 
     @Test
     void rechazaCorreoYaRegistrado() {
-        useCase.registrar(usuarioValido().build(), ADMIN);
+        useCase.registrarUsuario(usuarioValido().build(), ADMIN);
         User mismoCorreo = usuarioValido().documentoIdentidad("99887766").build();
 
-        assertThrows(CorreoYaRegistradoException.class, () -> useCase.registrar(mismoCorreo, ADMIN));
+        assertThrows(CorreoYaRegistradoException.class, () -> useCase.registrarUsuario(mismoCorreo, ADMIN));
         assertEquals(1, repository.guardados.size());
     }
 
     @Test
     void rechazaDocumentoYaRegistrado() {
-        useCase.registrar(usuarioValido().build(), ADMIN);
+        useCase.registrarUsuario(usuarioValido().build(), ADMIN);
         User mismoDocumento = usuarioValido().correoElectronico("otro@correo.com").build();
 
-        assertThrows(DocumentoYaRegistradoException.class, () -> useCase.registrar(mismoDocumento, ADMIN));
+        assertThrows(DocumentoYaRegistradoException.class, () -> useCase.registrarUsuario(mismoDocumento, ADMIN));
         assertEquals(1, repository.guardados.size());
     }
 

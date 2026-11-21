@@ -17,7 +17,7 @@ public record RegistrarUsuarioRequest(
         BigDecimal salarioBase,
         String clave
 ) {
-    public User toDomain() {
+    public User aDominio() {
         return User.builder()
                 .nombres(nombres)
                 .apellidos(apellidos)

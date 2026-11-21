@@ -17,7 +17,7 @@ public record UsuarioResponse(
         Long idRol,
         BigDecimal salarioBase
 ) {
-    public static UsuarioResponse fromDomain(User user) {
+    public static UsuarioResponse desdeDominio(User user) {
         return new UsuarioResponse(
                 user.getIdUsuario(),
                 user.getNombres(),

@@ -12,26 +12,26 @@ public class FakeUserRepository implements UserRepository {
     public int consultas;
 
     @Override
-    public User save(User user) {
+    public User guardar(User user) {
         User guardado = user.toBuilder().idUsuario((long) guardados.size() + 1).build();
         guardados.add(guardado);
         return guardado;
     }
 
     @Override
-    public boolean existsByCorreoElectronico(String correoElectronico) {
+    public boolean existePorCorreoElectronico(String correoElectronico) {
         consultas++;
         return guardados.stream().anyMatch(u -> correoElectronico.equals(u.getCorreoElectronico()));
     }
 
     @Override
-    public boolean existsByDocumentoIdentidad(String documentoIdentidad) {
+    public boolean existePorDocumentoIdentidad(String documentoIdentidad) {
         consultas++;
         return guardados.stream().anyMatch(u -> documentoIdentidad.equals(u.getDocumentoIdentidad()));
     }
 
     @Override
-    public Optional<User> findByCorreoElectronico(String correoElectronico) {
+    public Optional<User> buscarPorCorreoElectronico(String correoElectronico) {
         consultas++;
         return guardados.stream().filter(u -> correoElectronico.equals(u.getCorreoElectronico())).findFirst();
     }
