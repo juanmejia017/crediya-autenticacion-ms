@@ -1,19 +1,24 @@
 package co.com.crediya.model.user;
 
+import co.com.crediya.model.auth.UsuarioAutenticado;
+import co.com.crediya.model.exceptions.AccesoDenegadoException;
+import co.com.crediya.model.exceptions.CorreoYaRegistradoException;
 import co.com.crediya.model.exceptions.DatosInvalidosException;
+import co.com.crediya.model.exceptions.DocumentoYaRegistradoException;
 import co.com.crediya.model.rol.Rol;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
- * Reglas de formato del usuario. Pertenecen al modelo porque valen para cualquier
- * caso de uso que cree o modifique un usuario.
+ * Validaciones del usuario: permiso para registrar, formato de los datos y que el correo
+ * y el documento no estén ya registrados. El caso de uso solo las llama en orden.
  */
-public final class UserValidator {
+public final class ValidadorUsuario {
 
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
@@ -24,10 +29,40 @@ public final class UserValidator {
     private static final int CLAVE_MINIMO = 8;
     private static final int CLAVE_MAXIMO = 64;
 
-    private UserValidator() {
+    private ValidadorUsuario() {
     }
 
-    public static void validar(User user) {
+    /**
+     * Solo un administrador o un asesor que inició sesión puede registrar usuarios.
+     */
+    public static void validarPermisoDeRegistro(UsuarioAutenticado solicitante) {
+        if (solicitante == null || !solicitante.tieneAlgunRol(Rol.ADMIN, Rol.ASESOR)) {
+            throw new AccesoDenegadoException("Solo un administrador o un asesor puede registrar usuarios");
+        }
+    }
+
+    /**
+     * El correo no puede estar registrado. Recibe la consulta del repositorio como función.
+     */
+    public static void validarCorreoDisponible(User user, Predicate<String> existeCorreo) {
+        if (existeCorreo.test(user.getCorreoElectronico())) {
+            throw new CorreoYaRegistradoException();
+        }
+    }
+
+    /**
+     * Si viene documento, no puede estar registrado. Sin documento no se consulta.
+     */
+    public static void validarDocumentoDisponible(User user, Predicate<String> existeDocumento) {
+        if (user.getDocumentoIdentidad() != null && existeDocumento.test(user.getDocumentoIdentidad())) {
+            throw new DocumentoYaRegistradoException();
+        }
+    }
+
+    /**
+     * Formato de los datos: obligatorios, correo, salario, clave, rol y opcionales.
+     */
+    public static void validarDatos(User user) {
         if (user == null) {
             throw new DatosInvalidosException(List.of("El cuerpo de la petición es obligatorio"));
         }

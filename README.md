@@ -129,8 +129,10 @@ administrador. Es el que inicia sesión primero para registrar asesores y client
 - **ApiRest / LoginApiRest:** solo reciben la petición HTTP, la delegan y arman la respuesta (sin logs ni validaciones).
 - **ValidadorPeticion** (`api/validacion`): lee el header `Authorization: Bearer`, hace validar el token, registra quién
   hizo la petición y revisa que el cuerpo no venga vacío.
-- **Validadores del dominio:** `UserValidator` (datos del usuario) y `CredencialesValidator` (correo y clave del login).
-- **Casos de uso:** `registrarUsuario`, `crearAdministradorInicial`, `iniciarSesion`, `validarToken`.
+- **Validadores del dominio:** `ValidadorUsuario` (permiso, datos, correo y documento libres), `ValidadorCredenciales`
+  (correo y clave, usuario registrado, clave correcta) y `ValidadorToken` (token presente y vigente).
+- **Casos de uso:** `registrarUsuario`, `crearAdministradorInicial`, `iniciarSesion`, `validarToken`. Solo orquestan:
+  no tienen `if` ni `throw`; llaman a los validadores, a los gateways y guardan.
 - **Adapters:** solo persisten; la conversión dominio ↔ entidad está en `jpa/mapper` (`UserEntityMapper`, `RolEntityMapper`)
   y la traducción de errores de la base de datos en `jpa/error/TraductorErroresIntegridad`.
 - **Nombres de métodos en español.** Se mantienen en inglés solo los que exige el framework: los métodos derivados de
