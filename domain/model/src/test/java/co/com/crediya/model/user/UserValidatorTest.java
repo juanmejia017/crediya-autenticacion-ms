@@ -20,7 +20,9 @@ class UserValidatorTest {
                 .documentoIdentidad("1020304050")
                 .telefono("3001234567")
                 .fechaNacimiento(LocalDate.of(2000, 7, 12))
-                .salarioBase(new BigDecimal("2500000"));
+                .salarioBase(new BigDecimal("2500000"))
+                .clave("Clave123*")
+                .idRol(3L);
     }
 
     @Test
@@ -39,7 +41,7 @@ class UserValidatorTest {
 
         DatosInvalidosException ex = assertThrows(DatosInvalidosException.class, () -> UserValidator.validar(user));
 
-        assertEquals(4, ex.getErrores().size());
+        assertEquals(6, ex.getErrores().size());
     }
 
     @Test
@@ -105,5 +107,23 @@ class UserValidatorTest {
         DatosInvalidosException ex = assertThrows(DatosInvalidosException.class, () -> UserValidator.validar(user));
 
         assertEquals(5, ex.getErrores().size());
+    }
+
+    @Test
+    void rechazaClaveCortaOLarga() {
+        User corta = usuarioValido().clave("1234567").build();
+        User larga = usuarioValido().clave("x".repeat(65)).build();
+
+        assertThrows(DatosInvalidosException.class, () -> UserValidator.validar(corta));
+        assertThrows(DatosInvalidosException.class, () -> UserValidator.validar(larga));
+    }
+
+    @Test
+    void rechazaRolQueNoExiste() {
+        User user = usuarioValido().idRol(9L).build();
+
+        DatosInvalidosException ex = assertThrows(DatosInvalidosException.class, () -> UserValidator.validar(user));
+
+        assertEquals("El campo idRol debe ser 1 (administrador), 2 (asesor) o 3 (cliente)", ex.getErrores().get(0));
     }
 }

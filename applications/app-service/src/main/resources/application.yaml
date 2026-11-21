@@ -25,6 +25,13 @@ management:
         enabled: true
 cors:
   allowed-origins: "http://localhost:4200,http://localhost:8080"
+security:
+  jwt:
+    secret: "${JWT_SECRET}"
+    expiration-minutes: "${JWT_EXPIRACION_MINUTOS:60}"
+admin:
+  correo: "${ADMIN_CORREO:admin@crediya.com}"
+  clave: "${ADMIN_CLAVE}"
 logging:
   pattern:
     correlation: "[%X{traceId:-sin-traza}] "

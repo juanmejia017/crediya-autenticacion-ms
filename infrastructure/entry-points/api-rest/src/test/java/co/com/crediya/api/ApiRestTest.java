@@ -1,9 +1,14 @@
 package co.com.crediya.api;
 
+import co.com.crediya.model.auth.UsuarioAutenticado;
+import co.com.crediya.model.exceptions.AccesoDenegadoException;
 import co.com.crediya.model.exceptions.CorreoYaRegistradoException;
 import co.com.crediya.model.exceptions.DatosInvalidosException;
 import co.com.crediya.model.exceptions.DocumentoYaRegistradoException;
+import co.com.crediya.model.exceptions.NoAutenticadoException;
+import co.com.crediya.model.rol.Rol;
 import co.com.crediya.model.user.User;
+import co.com.crediya.usecase.autenticacion.AutenticacionUseCase;
 import co.com.crediya.usecase.user.UserUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +23,9 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(classes = TestConfig.class)
@@ -31,21 +39,30 @@ class ApiRestTest {
               "direccion": "Calle 10 # 20-30",
               "telefono": "3001234567",
               "correoElectronico": "juan@correo.com",
-              "salarioBase": 2500000
+              "salarioBase": 2500000,
+              "idRol": 3,
+              "clave": "Clave123*"
             }
             """;
 
     @Autowired
     private WebApplicationContext context;
 
+    private static final String TOKEN = "Bearer token-admin";
+    private static final UsuarioAutenticado ADMIN = new UsuarioAutenticado(1L, "admin@crediya.com", null, Rol.ADMIN);
+
     @MockitoBean
     private UserUseCase userUseCase;
+
+    @MockitoBean
+    private AutenticacionUseCase autenticacionUseCase;
 
     private RestTestClient client;
 
     @BeforeEach
     void setup() {
         client = RestTestClient.bindToApplicationContext(context).build();
+        when(autenticacionUseCase.validarToken(TOKEN)).thenReturn(ADMIN);
     }
 
     @Test
@@ -54,9 +71,10 @@ class ApiRestTest {
                 .idUsuario(1L).nombres("Juan").apellidos("Mejía")
                 .correoElectronico("juan@correo.com").salarioBase(new BigDecimal("2500000"))
                 .build();
-        when(userUseCase.registrar(any())).thenReturn(creado);
+        when(userUseCase.registrar(any(), eq(ADMIN))).thenReturn(creado);
 
         client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BODY)
                 .exchange()
@@ -68,10 +86,11 @@ class ApiRestTest {
 
     @Test
     void shouldReturn400WhenDataIsInvalid() {
-        when(userUseCase.registrar(any()))
+        when(userUseCase.registrar(any(), eq(ADMIN)))
                 .thenThrow(new DatosInvalidosException(List.of("El campo nombres es obligatorio")));
 
         client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BODY)
                 .exchange()
@@ -82,10 +101,11 @@ class ApiRestTest {
 
     @Test
     void shouldReturn409WhenEmailExists() {
-        when(userUseCase.registrar(any()))
+        when(userUseCase.registrar(any(), eq(ADMIN)))
                 .thenThrow(new CorreoYaRegistradoException());
 
         client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BODY)
                 .exchange()
@@ -94,9 +114,10 @@ class ApiRestTest {
 
     @Test
     void shouldReturn409WhenDocumentExists() {
-        when(userUseCase.registrar(any())).thenThrow(new DocumentoYaRegistradoException());
+        when(userUseCase.registrar(any(), eq(ADMIN))).thenThrow(new DocumentoYaRegistradoException());
 
         client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BODY)
                 .exchange()
@@ -108,6 +129,7 @@ class ApiRestTest {
     @Test
     void shouldReturn400WhenJsonIsMalformed() {
         client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{ \"salarioBase\": \"abc\" }")
                 .exchange()
@@ -129,14 +151,63 @@ class ApiRestTest {
 
     @Test
     void shouldReturn500WithGenericMessageOnUnexpectedError() {
-        when(userUseCase.registrar(any())).thenThrow(new IllegalStateException("detalle interno"));
+        when(userUseCase.registrar(any(), eq(ADMIN))).thenThrow(new IllegalStateException("detalle interno"));
 
         client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BODY)
                 .exchange()
                 .expectStatus().is5xxServerError()
                 .expectBody()
                 .jsonPath("$.codigo").isEqualTo("ERROR_INTERNO");
+    }
+
+    @Test
+    void shouldReturn401WhenTokenIsMissing() {
+        when(autenticacionUseCase.validarToken(null)).thenThrow(new NoAutenticadoException("Debes iniciar sesión"));
+
+        client.post().uri("/api/v1/usuarios")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BODY)
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectHeader().valueEquals("WWW-Authenticate", "Bearer")
+                .expectBody()
+                .jsonPath("$.codigo").isEqualTo("NO_AUTENTICADO");
+
+        verify(userUseCase, never()).registrar(any(), any());
+    }
+
+    @Test
+    void shouldReturn403WhenUserIsNotAdminOrAdvisor() {
+        when(userUseCase.registrar(any(), eq(ADMIN)))
+                .thenThrow(new AccesoDenegadoException("Solo un administrador o un asesor puede registrar usuarios"));
+
+        client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BODY)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.codigo").isEqualTo("ACCESO_DENEGADO");
+    }
+
+    @Test
+    void shouldNotReturnPasswordInResponse() {
+        User creado = User.builder()
+                .idUsuario(1L).nombres("Juan").apellidos("Mejía").correoElectronico("juan@correo.com")
+                .salarioBase(new BigDecimal("2500000")).clave("pbkdf2$hash").build();
+        when(userUseCase.registrar(any(), eq(ADMIN))).thenReturn(creado);
+
+        client.post().uri("/api/v1/usuarios")
+                .header("Authorization", TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BODY)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.clave").doesNotExist();
     }
 }
