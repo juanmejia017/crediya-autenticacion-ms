@@ -2,9 +2,9 @@ package co.com.crediya.api;
 
 import co.com.crediya.api.dto.RegistrarUsuarioRequest;
 import co.com.crediya.api.dto.UsuarioResponse;
+import co.com.crediya.api.validacion.ValidadorPeticion;
 import co.com.crediya.model.auth.UsuarioAutenticado;
 import co.com.crediya.model.user.User;
-import co.com.crediya.usecase.autenticacion.AutenticacionUseCase;
 import co.com.crediya.usecase.user.UserUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,31 +16,34 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 
+/**
+ * Entrada HTTP del registro de usuarios: recibe la petición, la delega y arma la respuesta.
+ */
 @Slf4j
 @RestController
-@RequestMapping(value = ApiRest.BASE_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/v1/usuarios", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class ApiRest {
 
-    static final String BASE_PATH = "/api/v1/usuarios";
-
     private final UserUseCase userUseCase;
-    private final AutenticacionUseCase autenticacionUseCase;
+    private final ValidadorPeticion validadorPeticion;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<UsuarioResponse> registrar(
+    public ResponseEntity<UsuarioResponse> registrarUsuario(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @RequestBody RegistrarUsuarioRequest request) {
-        UsuarioAutenticado solicitante = autenticacionUseCase.validarToken(authorization);
-        log.info("POST {} - inicio registro de usuario, solicitado por el usuario {} con rol {}",
-                BASE_PATH, solicitante.idUsuario(), solicitante.rol());
-        User creado = userUseCase.registrar(request.toDomain(), solicitante);
-        log.info("POST {} - usuario registrado con id {}", BASE_PATH, creado.getIdUsuario());
-        return ResponseEntity
-                .created(URI.create(BASE_PATH + "/" + creado.getIdUsuario()))
-                .body(UsuarioResponse.fromDomain(creado));
+            @RequestBody(required = false) RegistrarUsuarioRequest request) {
+        UsuarioAutenticado solicitante = validadorPeticion.validarPeticionAutenticada(authorization, request);
+        log.info("Registro de usuario solicitado por el usuario {} con rol {}", solicitante.idUsuario(), solicitante.rol());
+
+        User creado = userUseCase.registrarUsuario(request.aDominio(), solicitante);
+
+        log.info("Usuario registrado con id {}", creado.getIdUsuario());
+        URI ubicacion = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}").buildAndExpand(creado.getIdUsuario()).toUri();
+        return ResponseEntity.created(ubicacion).body(UsuarioResponse.desdeDominio(creado));
     }
 }

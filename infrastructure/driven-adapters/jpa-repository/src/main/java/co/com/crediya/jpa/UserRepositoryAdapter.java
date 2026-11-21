@@ -1,6 +1,7 @@
 package co.com.crediya.jpa;
 
 import co.com.crediya.jpa.entity.UserEntity;
+import co.com.crediya.jpa.mapper.UserEntityMapper;
 import co.com.crediya.jpa.repository.UserJpaRepository;
 import co.com.crediya.model.exceptions.CorreoYaRegistradoException;
 import co.com.crediya.model.exceptions.DocumentoYaRegistradoException;
@@ -15,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Locale;
 import java.util.Optional;
 
+/**
+ * Persistencia de usuarios: guarda y consulta en la tabla usuarios.
+ * La conversión entre User y UserEntity la hace UserEntityMapper.
+ */
 @Slf4j
 @Repository
 @RequiredArgsConstructor
@@ -24,79 +29,53 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     @Transactional
-    public User save(User user) {
+    public User guardar(User user) {
         log.info("Persistiendo nuevo usuario");
         try {
-            UserEntity entidad = toData(user);
-            User guardado = toDomain(repository.save(entidad));
+            User guardado = UserEntityMapper.aDominio(repository.save(UserEntityMapper.aEntidad(user)));
             log.info("Usuario persistido con id {}", guardado.getIdUsuario());
             return guardado;
         } catch (DataIntegrityViolationException e) {
-            String causa = String.valueOf(e.getMostSpecificCause().getMessage()).toLowerCase(Locale.ROOT);
-            if (causa.contains(UserEntity.UK_CORREO)) {
-                log.warn("Restricción única violada: {}", UserEntity.UK_CORREO);
-                throw new CorreoYaRegistradoException();
-            }
-            if (causa.contains(UserEntity.UK_DOCUMENTO)) {
-                log.warn("Restricción única violada: {}", UserEntity.UK_DOCUMENTO);
-                throw new DocumentoYaRegistradoException();
-            }
-            log.error("Violación de integridad no controlada al guardar el usuario", e);
-            throw e;
+            throw traducirViolacionDeIntegridad(e);
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existsByCorreoElectronico(String correoElectronico) {
+    public boolean existePorCorreoElectronico(String correoElectronico) {
         return repository.existsByCorreoElectronico(correoElectronico);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existsByDocumentoIdentidad(String documentoIdentidad) {
+    public boolean existePorDocumentoIdentidad(String documentoIdentidad) {
         return repository.existsByDocumentoIdentidad(documentoIdentidad);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<User> findByCorreoElectronico(String correoElectronico) {
-        Optional<User> usuario = repository.findByCorreoElectronico(correoElectronico).map(UserRepositoryAdapter::toDomain);
+    public Optional<User> buscarPorCorreoElectronico(String correoElectronico) {
+        Optional<User> usuario = repository.findByCorreoElectronico(correoElectronico).map(UserEntityMapper::aDominio);
         if (usuario.isEmpty()) {
             log.warn("No existe un usuario con el correo indicado");
         }
         return usuario;
     }
 
-    private static UserEntity toData(User user) {
-        return UserEntity.builder()
-                .idUsuario(user.getIdUsuario())
-                .nombres(user.getNombres())
-                .apellidos(user.getApellidos())
-                .fechaNacimiento(user.getFechaNacimiento())
-                .direccion(user.getDireccion())
-                .telefono(user.getTelefono())
-                .correoElectronico(user.getCorreoElectronico())
-                .documentoIdentidad(user.getDocumentoIdentidad())
-                .idRol(user.getIdRol())
-                .salarioBase(user.getSalarioBase())
-                .clave(user.getClave())
-                .build();
-    }
-
-    private static User toDomain(UserEntity entity) {
-        return User.builder()
-                .idUsuario(entity.getIdUsuario())
-                .nombres(entity.getNombres())
-                .apellidos(entity.getApellidos())
-                .fechaNacimiento(entity.getFechaNacimiento())
-                .direccion(entity.getDireccion())
-                .telefono(entity.getTelefono())
-                .correoElectronico(entity.getCorreoElectronico())
-                .documentoIdentidad(entity.getDocumentoIdentidad())
-                .idRol(entity.getIdRol())
-                .salarioBase(entity.getSalarioBase())
-                .clave(entity.getClave())
-                .build();
+    /**
+     * Si dos registros llegan al mismo tiempo, la restricción única de la base de datos es la que frena el segundo.
+     */
+    private RuntimeException traducirViolacionDeIntegridad(DataIntegrityViolationException e) {
+        String causa = String.valueOf(e.getMostSpecificCause().getMessage()).toLowerCase(Locale.ROOT);
+        if (causa.contains(UserEntity.UK_CORREO)) {
+            log.warn("Restricción única violada: {}", UserEntity.UK_CORREO);
+            return new CorreoYaRegistradoException();
+        }
+        if (causa.contains(UserEntity.UK_DOCUMENTO)) {
+            log.warn("Restricción única violada: {}", UserEntity.UK_DOCUMENTO);
+            return new DocumentoYaRegistradoException();
+        }
+        log.error("Violación de integridad no controlada al guardar el usuario", e);
+        return e;
     }
 }

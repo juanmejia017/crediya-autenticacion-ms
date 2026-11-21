@@ -44,7 +44,7 @@ class LoginApiRestTest {
     }
 
     @Test
-    void shouldReturnTokenWhenCredentialsAreValid() {
+    void devuelveElTokenSiLasCredencialesSonCorrectas() {
         UsuarioAutenticado usuario = new UsuarioAutenticado(7L, "ana@correo.com", "1020304050", Rol.CLIENTE);
         when(autenticacionUseCase.iniciarSesion("ana@correo.com", "Clave123*"))
                 .thenReturn(new Sesion("jwt-de-prueba", Sesion.TIPO_BEARER, 3600, usuario));
@@ -62,7 +62,7 @@ class LoginApiRestTest {
     }
 
     @Test
-    void shouldReturn401WhenCredentialsAreInvalid() {
+    void responde401SiLasCredencialesSonIncorrectas() {
         when(autenticacionUseCase.iniciarSesion("ana@correo.com", "Clave123*"))
                 .thenThrow(new CredencialesInvalidasException());
 
@@ -76,7 +76,7 @@ class LoginApiRestTest {
     }
 
     @Test
-    void shouldReturn400WhenFieldsAreMissing() {
+    void responde400SiFaltanCampos() {
         when(autenticacionUseCase.iniciarSesion(null, null))
                 .thenThrow(new DatosInvalidosException(List.of("El campo correoElectronico es obligatorio",
                         "El campo clave es obligatorio")));
@@ -91,7 +91,7 @@ class LoginApiRestTest {
     }
 
     @Test
-    void shouldReturn400WhenBodyIsMissing() {
+    void responde400SiNoHayCuerpo() {
         client.post().uri("/api/v1/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .exchange()

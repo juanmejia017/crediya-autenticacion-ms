@@ -20,7 +20,7 @@ public class UserUseCase {
     /**
      * Registra un usuario. Solo lo puede hacer un administrador o un asesor que inició sesión.
      */
-    public User registrar(User user, UsuarioAutenticado solicitante) {
+    public User registrarUsuario(User user, UsuarioAutenticado solicitante) {
         validarPermiso(solicitante);
         UserValidator.validar(user);
         User normalizado = user.normalizado();
@@ -37,7 +37,7 @@ public class UserUseCase {
         User conRol = admin.toBuilder().idRol(Rol.ADMIN.getId()).build();
         UserValidator.validar(conRol);
         User normalizado = conRol.normalizado();
-        if (userRepository.existsByCorreoElectronico(normalizado.getCorreoElectronico())) {
+        if (userRepository.existePorCorreoElectronico(normalizado.getCorreoElectronico())) {
             return false;
         }
         guardarConClaveEncriptada(normalizado);
@@ -51,18 +51,18 @@ public class UserUseCase {
     }
 
     private User guardarConClaveEncriptada(User user) {
-        return userRepository.save(user.conClaveEncriptada(passwordEncoder.encriptar(user.getClave())));
+        return userRepository.guardar(user.conClaveEncriptada(passwordEncoder.encriptar(user.getClave())));
     }
 
     private void validarCorreoDisponible(User user) {
-        if (userRepository.existsByCorreoElectronico(user.getCorreoElectronico())) {
+        if (userRepository.existePorCorreoElectronico(user.getCorreoElectronico())) {
             throw new CorreoYaRegistradoException();
         }
     }
 
     private void validarDocumentoDisponible(User user) {
         if (user.getDocumentoIdentidad() != null
-                && userRepository.existsByDocumentoIdentidad(user.getDocumentoIdentidad())) {
+                && userRepository.existePorDocumentoIdentidad(user.getDocumentoIdentidad())) {
             throw new DocumentoYaRegistradoException();
         }
     }

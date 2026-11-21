@@ -1,6 +1,6 @@
 package co.com.crediya.jpa.seed;
 
-import co.com.crediya.jpa.entity.RolEntity;
+import co.com.crediya.jpa.mapper.RolEntityMapper;
 import co.com.crediya.jpa.repository.RolJpaRepository;
 import co.com.crediya.model.rol.Rol;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +27,7 @@ public class DatosIniciales implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         for (Rol rol : Rol.values()) {
             if (!rolRepository.existsById(rol.getId())) {
-                rolRepository.save(RolEntity.builder()
-                        .idRol(rol.getId()).nombre(rol.name()).descripcion(rol.getDescripcion()).build());
+                rolRepository.save(RolEntityMapper.aEntidad(rol));
                 log.info("Rol inicial creado: {}", rol);
             }
         }

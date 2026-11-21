@@ -124,6 +124,16 @@ nunca se devuelven en las respuestas.
 **Administrador inicial:** al arrancar, si no existe, se crea el usuario `ADMIN_CORREO` / `ADMIN_CLAVE` con rol
 administrador. Es el que inicia sesión primero para registrar asesores y clientes.
 
+### Organización del código
+
+- **ApiRest / LoginApiRest:** solo reciben la petición HTTP, la delegan y arman la respuesta.
+- **ValidadorPeticion** (`api/validacion`): valida el token y que el cuerpo no venga vacío, antes del caso de uso.
+- **Casos de uso:** `registrarUsuario`, `crearAdministradorInicial`, `iniciarSesion`, `validarToken`.
+- **Adapters:** solo persisten; la conversión dominio ↔ entidad está en `jpa/mapper` (`UserEntityMapper`, `RolEntityMapper`).
+- **Nombres de métodos en español.** Se mantienen en inglés solo los que exige el framework: los métodos derivados de
+  Spring Data (`existsBy…`, `findBy…`, `save`), los `@Override` de Spring (`run`, `doFilter`) y los beans
+  `entityManagerFactory` y `transactionManager`.
+
 ### Roles y permisos
 
 | idRol | Rol      | Registrar usuarios (`POST /api/v1/usuarios`) | Crear solicitudes (`POST /api/v1/solicitud`, en solicitudes-ms) |
@@ -137,7 +147,8 @@ Los roles se guardan en la tabla `roles` al arrancar.
 ### Flujo del inicio de sesión
 
 ```
-LoginApiRest → AutenticacionUseCase.iniciarSesion → UserRepository.findByCorreoElectronico → UserRepositoryAdapter (SELECT)
+LoginApiRest → ValidadorPeticion.validarCuerpo → AutenticacionUseCase.iniciarSesion
+            → UserRepository.buscarPorCorreoElectronico → UserRepositoryAdapter (SELECT, UserEntityMapper)
             → PasswordEncoderGateway.coincide → Pbkdf2PasswordEncoderAdapter
             → TokenGateway.generar → JwtTokenAdapter → LoginApiRest (200 + token)
 ```
@@ -147,8 +158,9 @@ LoginApiRest → AutenticacionUseCase.iniciarSesion → UserRepository.findByCor
 Requiere el header `Authorization: Bearer <token>` de un usuario **ADMIN o ASESOR**.
 
 ```
-ApiRest → AutenticacionUseCase.validarToken → TokenGateway.validar (JwtTokenAdapter)
-        → UserUseCase.registrar (permiso → validar → correo/documento libres → encriptar clave → save) → ApiRest (201)
+ApiRest.registrarUsuario → ValidadorPeticion.validarPeticionAutenticada (token con AutenticacionUseCase.validarToken + cuerpo)
+        → UserUseCase.registrarUsuario (permiso → validar → correo/documento libres → encriptar clave → guardar)
+        → UserRepositoryAdapter (INSERT, UserEntityMapper) → ApiRest (201)
 ```
 
 Campos obligatorios: `nombres`, `apellidos`, `correoElectronico`, `salarioBase` (entre 0 y 15.000.000),
