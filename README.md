@@ -1,6 +1,6 @@
 # CrediYa — Microservicio de Autenticación (`crediya-autenticacion-ms`)
 
-Microservicio **imperativo (Spring MVC + JPA)** — se mantiene imperativo en todas las HU para conservar la misma estructura del proyecto — construido con Clean Architecture (scaffold de Bancolombia, `reactive=false`).
+Microservicio **imperativo (Spring MVC + JPA)** construido con Clean Architecture (scaffold de Bancolombia, `reactive=false`).
 Es un repositorio independiente con su propio build Gradle, base de datos y `docker-compose.yml`.
 El microservicio de solicitudes vive en su propio repositorio:
 [`crediya-solicitudes-ms`](https://github.com/juanmejia017/crediya-solicitudes-ms).
