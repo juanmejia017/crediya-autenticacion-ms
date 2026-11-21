@@ -24,6 +24,7 @@ public class User {
     private String documentoIdentidad;
     private Long idRol;
     private BigDecimal salarioBase;
+    private String clave;
 
     /**
      * Devuelve una copia lista para guardar: sin id, sin espacios sobrantes,
@@ -39,6 +40,13 @@ public class User {
                 .documentoIdentidad(limpiar(documentoIdentidad))
                 .direccion(limpiar(direccion))
                 .build();
+    }
+
+    /**
+     * Devuelve una copia con la clave ya encriptada, lista para guardar.
+     */
+    public User conClaveEncriptada(String claveEncriptada) {
+        return toBuilder().clave(claveEncriptada).build();
     }
 
     private static String limpiar(String valor) {

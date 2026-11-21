@@ -65,4 +65,7 @@ public class UserEntity {
 
     @Column(name = "salario_base", nullable = false, precision = 15, scale = 2)
     private BigDecimal salarioBase;
-}
+
+    @Column(name = "clave", length = 255)
+    private String clave;
+}

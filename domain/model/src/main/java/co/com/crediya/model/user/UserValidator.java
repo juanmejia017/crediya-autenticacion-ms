@@ -1,6 +1,7 @@
 package co.com.crediya.model.user;
 
 import co.com.crediya.model.exceptions.DatosInvalidosException;
+import co.com.crediya.model.rol.Rol;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,6 +21,8 @@ public final class UserValidator {
     private static final Pattern DOCUMENTO_PATTERN = Pattern.compile("^[A-Za-z0-9]{5,20}$");
     private static final BigDecimal SALARIO_MINIMO = BigDecimal.ZERO;
     private static final BigDecimal SALARIO_MAXIMO = new BigDecimal("15000000");
+    private static final int CLAVE_MINIMO = 8;
+    private static final int CLAVE_MAXIMO = 64;
 
     private UserValidator() {
     }
@@ -53,6 +56,16 @@ public final class UserValidator {
         } else if (user.getSalarioBase().compareTo(SALARIO_MINIMO) < 0
                 || user.getSalarioBase().compareTo(SALARIO_MAXIMO) > 0) {
             errores.add("El campo salarioBase debe estar entre 0 y 15000000");
+        }
+        if (estaVacio(user.getClave())) {
+            errores.add("El campo clave es obligatorio");
+        } else if (user.getClave().length() < CLAVE_MINIMO || user.getClave().length() > CLAVE_MAXIMO) {
+            errores.add("El campo clave debe tener entre 8 y 64 caracteres");
+        }
+        if (user.getIdRol() == null) {
+            errores.add("El campo idRol es obligatorio");
+        } else if (Rol.porId(user.getIdRol()).isEmpty()) {
+            errores.add("El campo idRol debe ser 1 (administrador), 2 (asesor) o 3 (cliente)");
         }
     }
 

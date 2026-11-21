@@ -12,6 +12,7 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -93,6 +94,24 @@ class UserRepositoryAdapterTest {
         when(repository.existsByDocumentoIdentidad("1020304050")).thenReturn(true);
 
         assertTrue(adapter.existsByDocumentoIdentidad("1020304050"));
+    }
+
+    @Test
+    void testFindByCorreoElectronicoIncluyeLaClave() {
+        entity.setClave("pbkdf2$hash");
+        when(repository.findByCorreoElectronico("juan@correo.com")).thenReturn(Optional.of(entity));
+
+        User encontrado = adapter.findByCorreoElectronico("juan@correo.com").orElseThrow();
+
+        assertEquals(1L, encontrado.getIdUsuario());
+        assertEquals("pbkdf2$hash", encontrado.getClave());
+    }
+
+    @Test
+    void testFindByCorreoElectronicoVacio() {
+        when(repository.findByCorreoElectronico("nadie@correo.com")).thenReturn(Optional.empty());
+
+        assertTrue(adapter.findByCorreoElectronico("nadie@correo.com").isEmpty());
     }
 
     private static DataIntegrityViolationException violacion(String restriccion) {

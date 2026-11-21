@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.Optional;
 
 @Slf4j
 @Repository
@@ -57,6 +58,16 @@ public class UserRepositoryAdapter implements UserRepository {
         return repository.existsByDocumentoIdentidad(documentoIdentidad);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<User> findByCorreoElectronico(String correoElectronico) {
+        Optional<User> usuario = repository.findByCorreoElectronico(correoElectronico).map(UserRepositoryAdapter::toDomain);
+        if (usuario.isEmpty()) {
+            log.warn("No existe un usuario con el correo indicado");
+        }
+        return usuario;
+    }
+
     private static UserEntity toData(User user) {
         return UserEntity.builder()
                 .idUsuario(user.getIdUsuario())
@@ -69,6 +80,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .documentoIdentidad(user.getDocumentoIdentidad())
                 .idRol(user.getIdRol())
                 .salarioBase(user.getSalarioBase())
+                .clave(user.getClave())
                 .build();
     }
 
@@ -84,6 +96,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .documentoIdentidad(entity.getDocumentoIdentidad())
                 .idRol(entity.getIdRol())
                 .salarioBase(entity.getSalarioBase())
+                .clave(entity.getClave())
                 .build();
     }
 }
