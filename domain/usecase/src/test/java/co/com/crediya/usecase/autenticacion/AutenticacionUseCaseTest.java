@@ -79,23 +79,23 @@ class AutenticacionUseCaseTest {
     }
 
     @Test
-    void validaElTokenDelHeaderAuthorization() {
+    void reconoceAlDuenoDelToken() {
         Sesion sesion = useCase.iniciarSesion("ana@correo.com", "Clave123*");
 
-        UsuarioAutenticado usuario = useCase.validarToken("Bearer " + sesion.token());
+        UsuarioAutenticado usuario = useCase.validarToken(sesion.token());
 
         assertEquals("ana@correo.com", usuario.correoElectronico());
         assertEquals(Rol.CLIENTE, usuario.rol());
     }
 
     @Test
-    void rechazaHeaderAusenteOSinBearer() {
+    void rechazaTokenAusenteOVacio() {
         assertThrows(NoAutenticadoException.class, () -> useCase.validarToken(null));
-        assertThrows(NoAutenticadoException.class, () -> useCase.validarToken("token-1"));
+        assertThrows(NoAutenticadoException.class, () -> useCase.validarToken(" "));
     }
 
     @Test
     void rechazaTokenInvalido() {
-        assertThrows(NoAutenticadoException.class, () -> useCase.validarToken("Bearer inventado"));
+        assertThrows(NoAutenticadoException.class, () -> useCase.validarToken("inventado"));
     }
 }
