@@ -33,7 +33,7 @@ public class AutenticacionUseCase {
         validarCredenciales(correoElectronico, clave);
         String correo = correoElectronico.trim().toLowerCase(Locale.ROOT);
 
-        User usuario = userRepository.findByCorreoElectronico(correo)
+        User usuario = userRepository.buscarPorCorreoElectronico(correo)
                 .orElseThrow(CredencialesInvalidasException::new);
         if (usuario.getClave() == null || !passwordEncoder.coincide(clave, usuario.getClave())) {
             throw new CredencialesInvalidasException();

@@ -10,7 +10,7 @@ public record LoginResponse(
         String correoElectronico,
         String rol
 ) {
-    public static LoginResponse fromDomain(Sesion sesion) {
+    public static LoginResponse desdeDominio(Sesion sesion) {
         return new LoginResponse(
                 sesion.token(),
                 sesion.tipo(),

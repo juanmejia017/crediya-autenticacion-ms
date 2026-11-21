@@ -29,7 +29,7 @@ class AutenticacionUseCaseTest {
     void setUp() {
         repository = new FakeUserRepository();
         useCase = new AutenticacionUseCase(repository, new FakePasswordEncoder(), new FakeTokenGateway());
-        repository.save(User.builder()
+        repository.guardar(User.builder()
                 .nombres("Ana").apellidos("Cliente").correoElectronico("ana@correo.com")
                 .documentoIdentidad("1020304050").salarioBase(new BigDecimal("2000000"))
                 .idRol(Rol.CLIENTE.getId()).clave("hash:Clave123*")
@@ -73,7 +73,7 @@ class AutenticacionUseCaseTest {
 
     @Test
     void usuarioSinRolValidoEsErrorTecnico() {
-        repository.save(User.builder().correoElectronico("sinrol@correo.com").clave("hash:Clave123*").build());
+        repository.guardar(User.builder().correoElectronico("sinrol@correo.com").clave("hash:Clave123*").build());
 
         assertThrows(TechnicalException.class, () -> useCase.iniciarSesion("sinrol@correo.com", "Clave123*"));
     }

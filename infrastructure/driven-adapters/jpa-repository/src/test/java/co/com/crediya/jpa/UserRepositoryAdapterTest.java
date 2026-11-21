@@ -52,66 +52,66 @@ class UserRepositoryAdapterTest {
     }
 
     @Test
-    void testSave() {
+    void guardaYDevuelveElUsuarioConId() {
         when(repository.save(any(UserEntity.class))).thenReturn(entity);
 
-        User result = adapter.save(user);
+        User result = adapter.guardar(user);
 
         assertEquals(1L, result.getIdUsuario());
         assertEquals("juan@correo.com", result.getCorreoElectronico());
     }
 
     @Test
-    void testSaveDuplicatedEmailThrowsBusinessException() {
+    void correoDuplicadoLanzaCorreoYaRegistrado() {
         when(repository.save(any(UserEntity.class))).thenThrow(violacion(UserEntity.UK_CORREO));
 
-        assertThrows(CorreoYaRegistradoException.class, () -> adapter.save(user));
+        assertThrows(CorreoYaRegistradoException.class, () -> adapter.guardar(user));
     }
 
     @Test
-    void testSaveDuplicatedDocumentThrowsBusinessException() {
+    void documentoDuplicadoLanzaDocumentoYaRegistrado() {
         when(repository.save(any(UserEntity.class))).thenThrow(violacion(UserEntity.UK_DOCUMENTO));
 
-        assertThrows(DocumentoYaRegistradoException.class, () -> adapter.save(user));
+        assertThrows(DocumentoYaRegistradoException.class, () -> adapter.guardar(user));
     }
 
     @Test
-    void testSaveOtherIntegrityViolationIsRethrown() {
+    void otraViolacionDeIntegridadSePropaga() {
         when(repository.save(any(UserEntity.class))).thenThrow(violacion("otra_restriccion"));
 
-        assertThrows(DataIntegrityViolationException.class, () -> adapter.save(user));
+        assertThrows(DataIntegrityViolationException.class, () -> adapter.guardar(user));
     }
 
     @Test
-    void testExistsByCorreoElectronico() {
+    void consultaSiExisteElCorreo() {
         when(repository.existsByCorreoElectronico("juan@correo.com")).thenReturn(true);
 
-        assertTrue(adapter.existsByCorreoElectronico("juan@correo.com"));
+        assertTrue(adapter.existePorCorreoElectronico("juan@correo.com"));
     }
 
     @Test
-    void testExistsByDocumentoIdentidad() {
+    void consultaSiExisteElDocumento() {
         when(repository.existsByDocumentoIdentidad("1020304050")).thenReturn(true);
 
-        assertTrue(adapter.existsByDocumentoIdentidad("1020304050"));
+        assertTrue(adapter.existePorDocumentoIdentidad("1020304050"));
     }
 
     @Test
-    void testFindByCorreoElectronicoIncluyeLaClave() {
+    void buscaPorCorreoEIncluyeLaClave() {
         entity.setClave("pbkdf2$hash");
         when(repository.findByCorreoElectronico("juan@correo.com")).thenReturn(Optional.of(entity));
 
-        User encontrado = adapter.findByCorreoElectronico("juan@correo.com").orElseThrow();
+        User encontrado = adapter.buscarPorCorreoElectronico("juan@correo.com").orElseThrow();
 
         assertEquals(1L, encontrado.getIdUsuario());
         assertEquals("pbkdf2$hash", encontrado.getClave());
     }
 
     @Test
-    void testFindByCorreoElectronicoVacio() {
+    void buscarPorCorreoInexistenteDevuelveVacio() {
         when(repository.findByCorreoElectronico("nadie@correo.com")).thenReturn(Optional.empty());
 
-        assertTrue(adapter.findByCorreoElectronico("nadie@correo.com").isEmpty());
+        assertTrue(adapter.buscarPorCorreoElectronico("nadie@correo.com").isEmpty());
     }
 
     private static DataIntegrityViolationException violacion(String restriccion) {
