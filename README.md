@@ -1,6 +1,6 @@
 # CrediYa — Microservicio de Autenticación (`crediya-autenticacion-ms`)
 
-Microservicio **imperativo (Spring MVC + JPA)** construido con Clean Architecture (scaffold de Bancolombia, `reactive=false`).
+Microservicio **imperativo (Spring MVC + JPA)** — se mantiene imperativo en todas las HU para conservar la misma estructura del proyecto — construido con Clean Architecture (scaffold de Bancolombia, `reactive=false`).
 Es un repositorio independiente con su propio build Gradle, base de datos y `docker-compose.yml`.
 El microservicio de solicitudes vive en su propio repositorio:
 [`crediya-solicitudes-ms`](https://github.com/juanmejia017/crediya-solicitudes-ms).
@@ -67,12 +67,18 @@ Este módulo es el más externo de la arquitectura, es el encargado de ensamblar
 | `DB_URL`      | URL JDBC de PostgreSQL          | `jdbc:postgresql://localhost:5432/crediya_db`  |
 | `DB_USERNAME` | Usuario de la base de datos     | *(obligatoria)*                                |
 | `DB_PASSWORD` | Contraseña de la base de datos  | *(obligatoria)*                                |
+| `JWT_SECRET`  | Secreto para firmar los tokens (mínimo 32 caracteres). **Debe ser el mismo en `crediya-solicitudes-ms`** | *(obligatoria)* |
+| `JWT_EXPIRACION_MINUTOS` | Minutos de vida del token | `60` |
+| `ADMIN_CORREO` | Correo del administrador inicial | `admin@crediya.com` |
+| `ADMIN_CLAVE` | Clave del administrador inicial (8 a 64 caracteres) | *(obligatoria)* |
 
 ## Pasos (PowerShell)
 
 ```powershell
 $env:DB_USERNAME="crediya"
 $env:DB_PASSWORD="crediya"
+$env:JWT_SECRET="cambia-este-secreto-por-uno-largo-de-32-o-mas"
+$env:ADMIN_CLAVE="Admin123*"
 
 docker compose up -d
 .\gradlew.bat clean build
@@ -81,15 +87,80 @@ docker compose up -d
 
 ## Endpoints
 
-### `POST /api/v1/usuarios` — HU 1: Registrar usuarios
+### `POST /api/v1/login` — HU 3: Iniciar sesión
 
-Campos obligatorios: `nombres`, `apellidos`, `correoElectronico`, `salarioBase` (entre 0 y 15.000.000).
+Recibe `correoElectronico` y `clave`. Si son correctos devuelve un token JWT que se envía en las demás peticiones
+con el header `Authorization: Bearer <token>`. No hay límite de intentos y no existe recuperación de contraseña
+en esta versión.
+
+```json
+{ "correoElectronico": "admin@crediya.com", "clave": "Admin123*" }
+```
+
+Respuesta `200`:
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tipo": "Bearer",
+  "expiraEnSegundos": 3600,
+  "idUsuario": 1,
+  "correoElectronico": "admin@crediya.com",
+  "rol": "ADMIN"
+}
+```
+
+| Código | Cuándo                                                        |
+|--------|---------------------------------------------------------------|
+| 200    | Sesión iniciada: devuelve el token                            |
+| 400    | Falta el correo o la clave, o JSON mal formado                |
+| 401    | Correo o clave incorrectos (`CREDENCIALES_INVALIDAS`)         |
+| 500    | Error inesperado                                              |
+
+El token (HS256) lleva el id, el correo, el documento y el rol del usuario, y vence a los `JWT_EXPIRACION_MINUTOS`.
+Las claves se guardan encriptadas con PBKDF2-HMAC-SHA256 y una sal aleatoria por usuario; nunca en texto plano y
+nunca se devuelven en las respuestas.
+
+**Administrador inicial:** al arrancar, si no existe, se crea el usuario `ADMIN_CORREO` / `ADMIN_CLAVE` con rol
+administrador. Es el que inicia sesión primero para registrar asesores y clientes.
+
+### Roles y permisos
+
+| idRol | Rol      | Registrar usuarios (`POST /api/v1/usuarios`) | Crear solicitudes (`POST /api/v1/solicitud`, en solicitudes-ms) |
+|-------|----------|:--------------------------------------------:|:---------------------------------------------------------------:|
+| 1     | ADMIN    | Sí                                           | No                                                              |
+| 2     | ASESOR   | Sí                                           | No                                                              |
+| 3     | CLIENTE  | No                                           | Sí, solo para sí mismo                                          |
+
+Los roles se guardan en la tabla `roles` al arrancar.
+
+### Flujo del inicio de sesión
+
+```
+LoginApiRest → AutenticacionUseCase.iniciarSesion → UserRepository.findByCorreoElectronico → UserRepositoryAdapter (SELECT)
+            → PasswordEncoderGateway.coincide → Pbkdf2PasswordEncoderAdapter
+            → TokenGateway.generar → JwtTokenAdapter → LoginApiRest (200 + token)
+```
+
+### `POST /api/v1/usuarios` — HU 1: Registrar usuarios (protegido desde la HU 3)
+
+Requiere el header `Authorization: Bearer <token>` de un usuario **ADMIN o ASESOR**.
+
+```
+ApiRest → AutenticacionUseCase.validarToken → TokenGateway.validar (JwtTokenAdapter)
+        → UserUseCase.registrar (permiso → validar → correo/documento libres → encriptar clave → save) → ApiRest (201)
+```
+
+Campos obligatorios: `nombres`, `apellidos`, `correoElectronico`, `salarioBase` (entre 0 y 15.000.000),
+`clave` (8 a 64 caracteres) e `idRol` (1, 2 o 3).
 Campos opcionales validados si se envían: `fechaNacimiento` (pasada), `telefono` (7–15 dígitos), `documentoIdentidad` (5–20 alfanuméricos).
 
 | Código | Cuándo                                                        |
 |--------|---------------------------------------------------------------|
 | 201    | Usuario registrado (header `Location` con la URL del recurso) |
 | 400    | Datos inválidos o JSON mal formado                            |
+| 401    | Sin token, token inválido o vencido (`NO_AUTENTICADO`)        |
+| 403    | El usuario no es administrador ni asesor (`ACCESO_DENEGADO`)  |
 | 409    | Correo o documento de identidad ya registrados                |
 | 415    | El `Content-Type` no es `application/json`                    |
 | 500    | Error inesperado (mensaje genérico, detalle solo en el log)   |

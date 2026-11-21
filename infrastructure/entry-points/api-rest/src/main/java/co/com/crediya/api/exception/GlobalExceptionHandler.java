@@ -1,12 +1,16 @@
 package co.com.crediya.api.exception;
 
 import co.com.crediya.api.dto.ErrorResponse;
+import co.com.crediya.model.exceptions.AccesoDenegadoException;
 import co.com.crediya.model.exceptions.BusinessException;
 import co.com.crediya.model.exceptions.CorreoYaRegistradoException;
+import co.com.crediya.model.exceptions.CredencialesInvalidasException;
 import co.com.crediya.model.exceptions.DatosInvalidosException;
 import co.com.crediya.model.exceptions.DocumentoYaRegistradoException;
+import co.com.crediya.model.exceptions.NoAutenticadoException;
 import co.com.crediya.model.exceptions.TechnicalException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -34,6 +38,26 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getCodigo(), ex.getMessage(), List.of());
     }
 
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredenciales(CredencialesInvalidasException ex) {
+        log.warn("Inicio de sesión fallido: correo o clave incorrectos");
+        return build(HttpStatus.UNAUTHORIZED, ex.getCodigo(), ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(NoAutenticadoException.class)
+    public ResponseEntity<ErrorResponse> handleNoAutenticado(NoAutenticadoException ex) {
+        log.warn("Petición sin autenticación válida: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), ex.getCodigo(), ex.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<ErrorResponse> handleAccesoDenegado(AccesoDenegadoException ex) {
+        log.warn("Acceso denegado: {}", ex.getMessage());
+        return build(HttpStatus.FORBIDDEN, ex.getCodigo(), ex.getMessage(), List.of());
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
         log.warn("Error de negocio [{}]: {}", ex.getCodigo(), ex.getMessage());
@@ -44,7 +68,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleJsonInvalido(HttpMessageNotReadableException ex) {
         log.warn("Cuerpo de la petición ilegible");
         return build(HttpStatus.BAD_REQUEST, "JSON_INVALIDO",
-                "El cuerpo de la petición es inválido. Revisa que salarioBase sea numérico y fechaNacimiento tenga formato yyyy-MM-dd",
+                "El cuerpo de la petición es inválido. Revisa el formato JSON y los tipos de datos (salarioBase numérico, fechaNacimiento yyyy-MM-dd)",
                 List.of());
     }
 

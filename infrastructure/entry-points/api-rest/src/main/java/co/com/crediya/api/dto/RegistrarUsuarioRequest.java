@@ -14,7 +14,8 @@ public record RegistrarUsuarioRequest(
         String correoElectronico,
         String documentoIdentidad,
         Long idRol,
-        BigDecimal salarioBase
+        BigDecimal salarioBase,
+        String clave
 ) {
     public User toDomain() {
         return User.builder()
@@ -27,6 +28,7 @@ public record RegistrarUsuarioRequest(
                 .documentoIdentidad(documentoIdentidad)
                 .idRol(idRol)
                 .salarioBase(salarioBase)
+                .clave(clave)
                 .build();
     }
 }
