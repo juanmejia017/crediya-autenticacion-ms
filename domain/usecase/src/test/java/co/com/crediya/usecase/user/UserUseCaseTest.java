@@ -120,11 +120,12 @@ class UserUseCaseTest {
     }
 
     @Test
-    void creaAdministradorInicialUnaSolaVez() {
+    void creaElAdministradorInicialConRolAdmin() {
         User admin = usuarioValido().correoElectronico("admin@crediya.com").documentoIdentidad(null).idRol(null).build();
 
-        assertTrue(useCase.crearAdministradorInicial(admin));
-        assertFalse(useCase.crearAdministradorInicial(admin));
+        assertFalse(useCase.existeUsuarioConCorreo("admin@crediya.com"));
+        useCase.crearAdministradorInicial(admin);
+        assertTrue(useCase.existeUsuarioConCorreo(" Admin@Crediya.com "));
         assertEquals(1, repository.guardados.size());
         assertEquals(Rol.ADMIN.getId(), repository.guardados.get(0).getIdRol());
         assertEquals("hash:Clave123*", repository.guardados.get(0).getClave());

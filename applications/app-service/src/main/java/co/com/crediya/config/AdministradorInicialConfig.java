@@ -25,6 +25,10 @@ public class AdministradorInicialConfig {
                                                        @Value("${admin.correo}") String correo,
                                                        @Value("${admin.clave}") String clave) {
         return args -> {
+            if (userUseCase.existeUsuarioConCorreo(correo)) {
+                log.info("El administrador inicial ya existe");
+                return;
+            }
             User admin = User.builder()
                     .nombres("Administrador")
                     .apellidos("CrediYa")
@@ -32,11 +36,8 @@ public class AdministradorInicialConfig {
                     .salarioBase(BigDecimal.ZERO)
                     .clave(clave)
                     .build();
-            if (userUseCase.crearAdministradorInicial(admin)) {
-                log.info("Administrador inicial creado con el correo {}", correo);
-            } else {
-                log.info("El administrador inicial ya existe");
-            }
+            userUseCase.crearAdministradorInicial(admin);
+            log.info("Administrador inicial creado con el correo {}", correo);
         };
     }
 }
